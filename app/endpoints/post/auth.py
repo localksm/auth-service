@@ -56,13 +56,11 @@ def create_user(req, new_user=None):
         # Insert new kms_key and user balance into database
         try:
             pk_data = {'user_id': int(new_user), 'kms_key': name }
-            balance_data = {'user_id': int(new_user), 'balance': Kusama_keypairs['balance'] }
             
             # Fund celo wallet
             fund_wallet(name)
             
             db.insert_Kusama_public_key(pk_data)
-            db.insert_busd_balance(balance_data)
         
         except Exception as e:
             return json.dumps({'error': str(e)})
