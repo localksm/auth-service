@@ -3,6 +3,7 @@ import boto3
 import base64
 
 from app.settings import REGION, KMS_KEY_ID, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+from app.utils.logger import logger
 
 class KMS():
     def __init__(self):
@@ -17,15 +18,19 @@ class KMS():
 
 
     def create_secret(self, name, data, id):
-        self.secret_manager_client.create_secret(
-            Name=name, 
-            SecretString=json.dumps(
-                {
-                    'keys': data,
-                    'owner': id
-                }
+        try:
+            self.secret_manager_client.create_secret(
+                Name=name, 
+                SecretString=json.dumps(
+                    {
+                        'keys': data,
+                        'owner': id
+                    }
+                )
             )
-        )
+        except Exception as e:
+            logger(str(e))
+            raise e
         
     def get_secret(self, key):
         return self.secret_manager_client.get_secret_value(SecretId=key)
