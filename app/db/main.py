@@ -282,7 +282,7 @@ class DB(object):
                     'code'    : 500
                 })
     
-    def insert_Kusama_public_key(self, data):
+    def insert_kms_key(self, data):
         with self.engine.connect() as con:
             try:
                 statement = text(f"""
