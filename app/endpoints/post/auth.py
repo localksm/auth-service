@@ -5,9 +5,6 @@ import time
 
 from app.utils.validations import create_user_schema, login_user_schema, logout_schema, reset_password_schema
 from app.db.main import DB
-from app.modules.binance import Binance
-from app.modules.Kusama import Stellar
-from app.modules.celo import create_celo_account, fund_wallet
 from app.modules.crypto import Crypto
 from app.modules.kms import KMS
 from app.modules.validate_google_token import validate_token
@@ -15,12 +12,12 @@ from app.modules.validate_facebook_token import validate_fb_token
 from app.modules.validate_twitter_token import validate_twitter_token
 from app.modules.generate_jwt import generate_jwt
 from app.settings import JWT_SECRET
+from app.utils.logger import logger
 
-db  = DB()
-st  = Stellar()
-kms = KMS()
+db = DB()
 cp  = Crypto()
-bn  = Binance()
+kms = KMS()
+
 
 def create_user(req, new_user=None):
     """Description:
@@ -31,18 +28,10 @@ def create_user(req, new_user=None):
     def handle_keys(new_user):
         # Generate keypairs
         data    = {}
-        
-        # Generate chains keypairs
-        binance_keypairs = bn.create_account()
-        Kusama_keypairs = st.generate_keypair()
-        mesh_keypairs    = cp.generate_mesh_keys()
-        celo_keypairs    = create_celo_account()
 
         # Build kms secret data
-        data['binance'] = { 'public_key': binance_keypairs['address'], 'private_key': binance_keypairs['privateKey'] }
-        data['Kusama'] = { 'public_key': Kusama_keypairs['public_key'], 'private_key': Kusama_keypairs['private_key'] }
-        data['mesh']    = { 'public_key': mesh_keypairs['public_key'], 'private_key': mesh_keypairs['private_key'] }
-        data['celo']    = { 'public_key': celo_keypairs['address'], 'private_key': celo_keypairs['privateKey'] }
+        # Since we have no service to create kms keys, by now we save it as a blank string
+        data['ksm'] = { 'public_key': "", 'private_key': "" }
 
         # Generate kms key reference
         name = cp.generate_random_key()
@@ -51,18 +40,17 @@ def create_user(req, new_user=None):
         try:
             kms.create_secret(name, data, new_user)
         except Exception as e:
+            logger(str(e))
             return json.dumps({'error': str(e)})                
         
         # Insert new kms_key and user balance into database
         try:
+            print("inserting key")
             pk_data = {'user_id': int(new_user), 'kms_key': name }
-            
-            # Fund celo wallet
-            fund_wallet(name)
-            
-            db.insert_Kusama_public_key(pk_data)
+            db.insert_kms_key(pk_data)
         
         except Exception as e:
+            logger(str(e))
             return json.dumps({'error': str(e)})
     
     # Validate request payload
@@ -80,7 +68,7 @@ def create_user(req, new_user=None):
             try:
                 new_user = db.insert_user(data)
             except Exception as e:
-                print('ERROR!!!!',e)
+                logger(str(e))
                 return json.dumps({'error': str(e)})
                 
             # Generate keypairs
@@ -106,6 +94,7 @@ def create_user(req, new_user=None):
                     try:
                         new_user = db.insert_user(data)
                     except Exception as e:
+                        logger(str(e))
                         return json.dumps({'error': str(e)})
                     
                     # Generate keypairs
@@ -122,6 +111,7 @@ def create_user(req, new_user=None):
                 else:
                     return json.dumps({'error': 'Wrong email'})
             except Exception as e:
+                logger(str(e))
                 return json.dumps({'error': str(e)})
             
         # Handle facebook request
@@ -136,6 +126,7 @@ def create_user(req, new_user=None):
                     try:
                         new_user = db.insert_user(data)
                     except Exception as e:
+                        logger(str(e))
                         return json.dumps({'error': str(e)})
                     
                     # Generate keypairs
@@ -152,6 +143,7 @@ def create_user(req, new_user=None):
                     return json.dumps({'error': 'Invalid facebook token'})
 
             except Exception as e:
+                logger(str(e))
                 return json.dumps({'error': str(e)})
             
         # Handle twitter request
@@ -167,6 +159,7 @@ def create_user(req, new_user=None):
                     try:
                         new_user = db.insert_user(data)
                     except Exception as e:
+                        logger(str(e))
                         return json.dumps({'error': str(e)})
                     
                     # Generate keypairs
@@ -182,11 +175,10 @@ def create_user(req, new_user=None):
                     return json.dumps({'error': 'Invalid twitter token'})
             
             except Exception as e:
-            
+                logger(str(e))        
                 return json.dumps({'error': str(e)})   
                 
     except Exception as e:
-        print(e)
         return json.dumps({'error': 'Database error', 'message': str(e)})
         
 def login(req):
@@ -199,7 +191,8 @@ def login(req):
     try:
         login_user_schema(data)        
     except Exception as e:
-        
+        logger(str(e))
+     
         return json.dumps({'error': 'Invalid request', 'message': str(e)})
     
     # Validate that there are no active sessions for the given user
@@ -211,6 +204,8 @@ def login(req):
             user = db.login_user_with_email(data)
             return json.dumps({'user': user[0], 'is_auth': True})
         except Exception as e:
+            logger(str(e))
+            
             return json.dumps({'authentication_error': 'There was an error during authentication'})
         
     # Handle google request
@@ -227,6 +222,8 @@ def login(req):
                 return json.dumps({'error': 'invalid token for given user'})
              
         except Exception as e:
+            logger(str(e))
+            
             return json.dumps({'error': 'Wrong credentials', 'message': str(e)})
             
             
@@ -244,6 +241,8 @@ def login(req):
                 return json.dumps({'error': 'invalid token for given user'})
              
         except Exception as e:
+            logger(str(e))
+            
             return json.dumps({'error': 'Wrong credentials'})
         
     # Handle twitter request
@@ -263,6 +262,8 @@ def login(req):
                 return json.dumps({'error': 'invalid token for given user'})
              
         except Exception as e:
+            logger(str(e))
+            
             return json.dumps({'error': 'Wrong credentials'})
                  
 def logout(req):
@@ -273,7 +274,8 @@ def logout(req):
         logout_schema(data)
     
     except Exception as e:
-    
+        logger(str(e))
+        
         return json.dumps({'error': str(e)})        
     
     try:
@@ -281,6 +283,7 @@ def logout(req):
         db.log_out(data['email'])
     
     except Exception as e:
+        logger(str(e))
         
         return json.dumps({'error': str(e)})
     
@@ -331,6 +334,8 @@ def reset_password(req, decoded=None):
     try:
         reset_password_schema(data)        
     except Exception as e:
+        logger(str(e))
+        
         return json.dumps({
             'message': str(e), 
             'error': True,
@@ -371,6 +376,7 @@ def reset_password(req, decoded=None):
                 'code': 401
             })
     except Exception as e:
+        logger(str(e))        
         return json.dumps({
             'message': str(e),
             'error': True,
