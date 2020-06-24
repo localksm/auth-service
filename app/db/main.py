@@ -177,6 +177,38 @@ class DB(object):
                 
             except Exception as e:
                 raise e
+            
+    def validate_existing_session_with_name(self, name):
+        with self.engine.connect() as con:
+            try:
+                statement = text(
+                    f"""
+                        SELECT token FROM auth.users WHERE name='{name}';
+                    """
+                )
+                
+                resultproxy = con.execute(statement)
+                token = None
+                
+                for rowproxy in resultproxy:
+                    token = rowproxy[0]
+                
+                con.close()
+                #return {'token': token, 'expired': False}
+                try:
+                    if token is not None and token != '':
+                        jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+                        
+                    
+                    return {'token': token, 'expired': False}
+                    
+                except jwt.ExpiredSignatureError:
+                    # Signature has expired
+                    return {'token': token, 'expired': True}
+                
+                
+            except Exception as e:
+                raise e
         
         
     def verify_token(self, token):

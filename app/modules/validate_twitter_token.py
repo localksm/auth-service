@@ -19,7 +19,7 @@ def validate_twitter_token(token, token_secret, credentials=None):
 
     except Exception as e:
         
-        return json.dumps({'error': 'invalid twitter credentials'})
+        return json.dumps({'error': 'invalid twitter credentials', 'error':str(e)})
         
     return credentials
 
