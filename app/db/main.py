@@ -82,6 +82,39 @@ class DB(object):
                 return data
         except Exception as e:
             raise e
+
+    def __authenticate_user_with_name(self, name):
+        try:
+            with self.engine.connect() as con:
+                
+                social_auth_statement = text(f"""
+                    SELECT id, email, name, kms_key 
+                    FROM auth.users_view u WHERE name='{name}';
+                """)
+
+                auth_result = con.execute(social_auth_statement)
+                data = []
+                user_keys = {}
+                for row in auth_result:
+                    
+                    user_keys = self.kms.get_secret(row[3])
+                    user_keys = json.loads(user_keys['SecretString'])
+                    
+                    data.append({
+                        'id': row[0],
+                        'email': row[1],
+                        'name': row[2],
+                        'kms_key': row[3],
+                        'issued_at': int(time.time()),
+                    })
+
+                user_id = data[0]['id']
+
+                con.close()
+                return data
+        except Exception as e:
+            raise e      
+
     
     def login_user_with_email(self, user):
         data = self.__authenticate_user(user['email'], user['password'])        
@@ -99,19 +132,33 @@ class DB(object):
         
         
     def login_user_with_social_credentials(self, user):
-        data = self.__authenticate_user(user['email'], None)        
-        data[0]['exp']   = int(time.time() + 60 * 60)            
-        data[0]['token'] = str(generate_jwt(data[0], JWT_SECRET))
+        if 'email' in user:
+            data = self.__authenticate_user(user['email'], None)        
+            data[0]['exp']   = int(time.time() + 60 * 60)            
+            data[0]['token'] = str(generate_jwt(data[0], JWT_SECRET))
+                
+            # Remove unwanted data from response
+            del data[0]['exp']
+            del data[0]['kms_key']
+            del data[0]['issued_at']
             
-        # Remove unwanted data from response
-        del data[0]['exp']
-        del data[0]['kms_key']
-        del data[0]['issued_at']
-        
-        self.__set_login(data[0]['token'], user['email'])        
-        
-        return data
-        
+            self.__set_login(data[0]['token'], user['email'])        
+            
+            return data
+        else:
+            __authenticate_user_with_name(user['name']) 
+            
+            data[0]['exp']   = int(time.time() + 60 * 60)            
+            data[0]['token'] = str(generate_jwt(data[0], JWT_SECRET))
+                
+            # Remove unwanted data from response
+            del data[0]['exp']
+            del data[0]['kms_key']
+            del data[0]['issued_at']
+            
+            self.__set_login_with_name(data[0]['token'], user['name'])        
+            
+            return data
         
     def __set_login(self, token, email):
         
@@ -123,6 +170,21 @@ class DB(object):
                         is_logged = TRUE,
                         last_login = NOW()
                     WHERE email = '{email}';                 
+            """)
+            con.execute(statement)
+            
+            con.close()
+            
+    def __set_login_with_name(self, token, name):
+        
+        with self.engine.connect() as con:
+            statement = text(f"""
+                    UPDATE auth.users 
+                    SET 
+                        token = '{token}',
+                        is_logged = TRUE,
+                        last_login = NOW()
+                    WHERE name = '{name}';                 
             """)
             con.execute(statement)
             
