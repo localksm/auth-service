@@ -14,7 +14,7 @@ def validate_fb_token(userToken):
     link = 'https://graph.facebook.com/debug_token?input_token=' + userToken + '&access_token=' + appToken
     try:
         user = requests.get(link).json()['data']
-    except (ValueError, KeyError, TypeError) as error:
+    except Exception as error:
         return error
     return user
 

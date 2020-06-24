@@ -14,6 +14,8 @@ from app.modules.generate_jwt import generate_jwt
 from app.settings import JWT_SECRET
 from app.utils.logger import logger
 
+from app.modules.ksm import create_ksm_keys
+
 db = DB()
 cp  = Crypto()
 kms = KMS()
@@ -29,9 +31,9 @@ def create_user(req, new_user=None):
         # Generate keypairs
         data    = {}
 
+        ksm_keys = create_ksm_keys()
         # Build kms secret data
-        # Since we have no service to create kms keys, by now we save it as a blank string
-        data['ksm'] = { 'public_key': "", 'private_key': "" }
+        data['ksm'] = { 'public_key': ksm_keys['public_key'], 'private_key': ksm_keys['private_key'], 'account_id': ksm_keys['account_id'], 'SS58_address': ksm_keys['SS58_address'], 'phrase': ksm_keys['phrase'] }
 
         # Generate kms key reference
         name = cp.generate_random_key()
@@ -40,7 +42,7 @@ def create_user(req, new_user=None):
         try:
             kms.create_secret(name, data, new_user)
         except Exception as e:
-            logger(str(e))
+            
             return json.dumps({'error': str(e)})                
         
         # Insert new kms_key and user balance into database
@@ -50,7 +52,7 @@ def create_user(req, new_user=None):
             db.insert_kms_key(pk_data)
         
         except Exception as e:
-            logger(str(e))
+            
             return json.dumps({'error': str(e)})
     
     # Validate request payload
@@ -68,7 +70,7 @@ def create_user(req, new_user=None):
             try:
                 new_user = db.insert_user(data)
             except Exception as e:
-                logger(str(e))
+                
                 return json.dumps({'error': str(e)})
                 
             # Generate keypairs
@@ -88,13 +90,12 @@ def create_user(req, new_user=None):
             
             try:
                 validation = validate_token(token, data['platform'])
-                
                 if validation['email'] == data['email']:                    
                     # Insert user
                     try:
                         new_user = db.insert_user(data)
                     except Exception as e:
-                        logger(str(e))
+                        
                         return json.dumps({'error': str(e)})
                     
                     # Generate keypairs
@@ -111,7 +112,7 @@ def create_user(req, new_user=None):
                 else:
                     return json.dumps({'error': 'Wrong email'})
             except Exception as e:
-                logger(str(e))
+                print(e)
                 return json.dumps({'error': str(e)})
             
         # Handle facebook request
@@ -120,13 +121,12 @@ def create_user(req, new_user=None):
             
             try:
                 validation = validate_fb_token(token)
-                
                 if validation['user_id'] == data['userFBID']:
                     # Insert user
                     try:
                         new_user = db.insert_user(data)
                     except Exception as e:
-                        logger(str(e))
+                        
                         return json.dumps({'error': str(e)})
                     
                     # Generate keypairs
@@ -143,7 +143,6 @@ def create_user(req, new_user=None):
                     return json.dumps({'error': 'Invalid facebook token'})
 
             except Exception as e:
-                logger(str(e))
                 return json.dumps({'error': str(e)})
             
         # Handle twitter request
@@ -159,7 +158,7 @@ def create_user(req, new_user=None):
                     try:
                         new_user = db.insert_user(data)
                     except Exception as e:
-                        logger(str(e))
+                        
                         return json.dumps({'error': str(e)})
                     
                     # Generate keypairs
@@ -175,7 +174,7 @@ def create_user(req, new_user=None):
                     return json.dumps({'error': 'Invalid twitter token'})
             
             except Exception as e:
-                logger(str(e))        
+                        
                 return json.dumps({'error': str(e)})   
                 
     except Exception as e:
@@ -191,7 +190,7 @@ def login(req):
     try:
         login_user_schema(data)        
     except Exception as e:
-        logger(str(e))
+        
      
         return json.dumps({'error': 'Invalid request', 'message': str(e)})
     
@@ -204,7 +203,7 @@ def login(req):
             user = db.login_user_with_email(data)
             return json.dumps({'user': user[0], 'is_auth': True})
         except Exception as e:
-            logger(str(e))
+            
             
             return json.dumps({'authentication_error': 'There was an error during authentication'})
         
@@ -222,7 +221,7 @@ def login(req):
                 return json.dumps({'error': 'invalid token for given user'})
              
         except Exception as e:
-            logger(str(e))
+            
             
             return json.dumps({'error': 'Wrong credentials', 'message': str(e)})
             
@@ -241,7 +240,7 @@ def login(req):
                 return json.dumps({'error': 'invalid token for given user'})
              
         except Exception as e:
-            logger(str(e))
+            
             
             return json.dumps({'error': 'Wrong credentials'})
         
@@ -262,7 +261,7 @@ def login(req):
                 return json.dumps({'error': 'invalid token for given user'})
              
         except Exception as e:
-            logger(str(e))
+            
             
             return json.dumps({'error': 'Wrong credentials'})
                  
@@ -274,7 +273,7 @@ def logout(req):
         logout_schema(data)
     
     except Exception as e:
-        logger(str(e))
+        
         
         return json.dumps({'error': str(e)})        
     
@@ -283,7 +282,7 @@ def logout(req):
         db.log_out(data['email'])
     
     except Exception as e:
-        logger(str(e))
+        
         
         return json.dumps({'error': str(e)})
     
@@ -334,7 +333,7 @@ def reset_password(req, decoded=None):
     try:
         reset_password_schema(data)        
     except Exception as e:
-        logger(str(e))
+        
         
         return json.dumps({
             'message': str(e), 
@@ -376,7 +375,7 @@ def reset_password(req, decoded=None):
                 'code': 401
             })
     except Exception as e:
-        logger(str(e))        
+                
         return json.dumps({
             'message': str(e),
             'error': True,
