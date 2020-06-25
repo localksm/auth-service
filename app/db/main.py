@@ -146,7 +146,7 @@ class DB(object):
             
             return data
         else:
-            __authenticate_user_with_name(user['name']) 
+            self.__authenticate_user_with_name(user['name']) 
             
             data[0]['exp']   = int(time.time() + 60 * 60)            
             data[0]['token'] = str(generate_jwt(data[0], JWT_SECRET))
