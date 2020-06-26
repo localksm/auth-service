@@ -47,7 +47,6 @@ def create_user(req, new_user=None):
         
         # Insert new kms_key and user balance into database
         try:
-            print("inserting key")
             pk_data = {'user_id': int(new_user), 'kms_key': name }
             db.insert_kms_key(pk_data)
         
@@ -112,7 +111,6 @@ def create_user(req, new_user=None):
                 else:
                     return json.dumps({'error': 'Wrong email'})
             except Exception as e:
-                print(e)
                 return json.dumps({'error': str(e)})
             
         # Handle facebook request
@@ -195,7 +193,11 @@ def login(req):
         return json.dumps({'error': 'Invalid request', 'message': str(e)})
     
     # Validate that there are no active sessions for the given user
-    current_session = db.validate_existing_session(data['email'])
+    current_session = None
+    if 'email' in data:
+        current_session = db.validate_existing_session(data['email'])
+    else:
+        current_session = db.validate_existing_session_with_name(data['name'])
 
     # Handle email request
     if data['type'] == 'email':
@@ -253,7 +255,6 @@ def login(req):
         try:
             
             validation = validate_twitter_token(token, secret_token)     
-
             if data['userTWID'] == validation.id_str:                    
                 user = db.login_user_with_social_credentials(data)
                 return json.dumps({'user': user[0], 'is_auth': True})
@@ -261,9 +262,7 @@ def login(req):
                 return json.dumps({'error': 'invalid token for given user'})
              
         except Exception as e:
-            
-            
-            return json.dumps({'error': 'Wrong credentials'})
+            return json.dumps({'error': 'Wrong credentials', 'error': str(e)})
                  
 def logout(req):
     data = json.load(req)
