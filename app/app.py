@@ -44,7 +44,6 @@ class AuthMiddleware(object):
 
         if path[1] == 'auth/get_token':
             key = req.get_header('Authorization')
-            print(key)
             if key == GET_RESET_PASSWORD_TOKEN_KEY:
                 return
             else:
