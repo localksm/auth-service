@@ -33,10 +33,7 @@ FUNDING_ACCOUNT_SECRET = os.getenv('FUNDING_ACCOUNT_SECRET')
 FUNDING_ACCOUNT_PK     = os.getenv('FUNDING_ACCOUNT_PK')
 NETWORK_URL            = os.getenv('NETWORK_URL')
 
-BINANCE_SERVICE_URL    = os.getenv('BINANCE_SERVICE_URL')
-CELO_SERVICE_URL       = os.getenv('CELO_SERVICE_URL')
-
-CELO_FUNDING_KEY       = os.getenv('CELO_FUNDING_KEY')
+KSM_SERVICE_URL        = os.getenv('KSM_SERVICE_URL')
 
 # AWS
 REGION                 = os.getenv('REGION')
